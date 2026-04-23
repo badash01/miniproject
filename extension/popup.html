@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Research Paper Summariser</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <p>AI / ML</p>
+        <h1>Paper Summariser</h1>
+      </header>
+
+      <section class="detect-card">
+        <div>
+          <span id="detectBadge">Scanning</span>
+          <strong id="sourceTitle">Looking for a research paper</strong>
+          <small id="sourceMeta">Open this extension on an abstract, article, arXiv, IEEE, ACM, Springer, or paper page.</small>
+        </div>
+        <button id="detectBtn" type="button" title="Scan current page again">Scan</button>
+      </section>
+
+      <div class="actions">
+        <button id="selectionBtn" type="button">Use Selection</button>
+        <select id="lengthSelect" aria-label="Summary length">
+          <option value="short">Short</option>
+          <option value="medium" selected>Medium</option>
+          <option value="detailed">Detailed</option>
+        </select>
+      </div>
+
+      <textarea id="paperText" placeholder="Detected paper text will appear here. You can also paste text manually."></textarea>
+      <button id="summariseBtn" class="primary" type="button">Summarise</button>
+      <p id="status">Backend: http://127.0.0.1:3001</p>
+
+      <section id="result" hidden>
+        <h2 id="title"></h2>
+        <div id="keywords"></div>
+        <h3>Summary</h3>
+        <p id="abstract"></p>
+        <h3>Contributions</h3>
+        <ul id="contributions"></ul>
+        <h3>Methodology</h3>
+        <p id="methodology"></p>
+        <h3>Findings</h3>
+        <p id="findings"></p>
+      </section>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

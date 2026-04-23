@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Research Paper Summariser</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.mjs" type="module"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace">
+        <div class="panel input-panel">
+          <header class="topbar">
+            <div>
+              <p class="eyebrow">AI / ML Mini Project</p>
+              <h1>Research Paper Summariser</h1>
+            </div>
+            <span class="status-pill" id="statusPill">Ready</span>
+          </header>
+
+          <div class="upload-zone" id="dropZone">
+            <input id="fileInput" type="file" accept=".txt,.pdf,application/pdf,text/plain" />
+            <label for="fileInput">
+              <span class="upload-icon" aria-hidden="true">+</span>
+              <span>
+                <strong>Upload research paper</strong>
+                <small>PDF or TXT, or paste text below</small>
+              </span>
+            </label>
+          </div>
+
+          <label class="field-label" for="paperText">Paper text</label>
+          <textarea
+            id="paperText"
+            placeholder="Paste abstract, introduction, methodology, results, or full research paper text here..."
+          ></textarea>
+
+          <div class="controls">
+            <div class="control-group" aria-label="Summary length">
+              <button class="chip active" data-length="short" type="button">Short</button>
+              <button class="chip" data-length="medium" type="button">Medium</button>
+              <button class="chip" data-length="detailed" type="button">Detailed</button>
+            </div>
+            <button id="summariseBtn" class="primary-btn" type="button">Summarise</button>
+          </div>
+        </div>
+
+        <div class="panel output-panel">
+          <div class="summary-grid">
+            <article class="summary-card">
+              <span>Title Guess</span>
+              <h2 id="titleGuess">Waiting for paper text</h2>
+            </article>
+            <article class="summary-card">
+              <span>Keywords</span>
+              <div class="keyword-list" id="keywords"></div>
+            </article>
+          </div>
+
+          <section class="result-block">
+            <h2>Abstract Summary</h2>
+            <p id="abstractSummary">Your concise summary will appear here.</p>
+          </section>
+
+          <section class="result-block">
+            <h2>Key Contributions</h2>
+            <ul id="contributions">
+              <li>Add paper text and click Summarise.</li>
+            </ul>
+          </section>
+
+          <section class="result-block two-column">
+            <div>
+              <h2>Methodology</h2>
+              <p id="methodology">No methodology detected yet.</p>
+            </div>
+            <div>
+              <h2>Findings</h2>
+              <p id="findings">No findings detected yet.</p>
+            </div>
+          </section>
+
+          <section class="result-block">
+            <h2>Study Notes</h2>
+            <ul id="studyNotes">
+              <li>Best for abstracts, IEEE/ACM style papers, and project reports.</li>
+            </ul>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js" type="module"></script>
+  </body>
+</html>

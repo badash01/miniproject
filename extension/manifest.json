@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Research Paper Summariser",
+  "version": "1.0.0",
+  "description": "Automatically detect and summarise research papers with a local LLM API backend.",
+  "action": {
+    "default_title": "Research Paper Summariser",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["http://127.0.0.1:3001/*", "http://localhost:3001/*"]
+}
