@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: research-paper-summariser
+    runtime: node
+    plan: free
+    repo: https://github.com/badash01/miniproject.git
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: LLM_PROVIDER
+        value: openai
+      - key: LLM_API_URL
+        value: https://openrouter.ai/api/v1/chat/completions
+      - key: LLM_MODEL
+        value: google/gemma-4-26b-a4b-it:free
+      - key: LLM_HTTP_REFERER
+        value: https://research-paper-summariser.onrender.com
+      - key: LLM_X_TITLE
+        value: Research Paper Summariser
+      - key: LLM_API_KEY
+        sync: false

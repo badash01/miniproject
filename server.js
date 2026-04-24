@@ -7,6 +7,7 @@ const root = fileURLToPath(new URL(".", import.meta.url));
 
 await loadEnv();
 
+const host = process.env.HOST || "0.0.0.0";
 const port = Number(process.env.PORT || 3001);
 
 const llmConfig = {
@@ -49,8 +50,8 @@ createServer(async (request, response) => {
   }
 
   await serveStatic(request, response);
-}).listen(port, "127.0.0.1", () => {
-  console.log(`Research Paper Summariser running at http://127.0.0.1:${port}`);
+}).listen(port, host, () => {
+  console.log(`Research Paper Summariser running at http://${host}:${port}`);
 });
 
 async function handleSummarize(request, response) {
@@ -84,28 +85,15 @@ async function callLlm(text, length) {
 }
 
 async function callOpenAiCompatible(text, length) {
-  const prompt = `Summarise this research paper for a student project.
-
-Return only valid JSON with this exact shape:
-{
-  "title": "string",
-  "keywords": ["string"],
-  "abstract": "string",
-  "contributions": ["string"],
-  "methodology": "string",
-  "findings": "string",
-  "notes": ["string"]
-}
-
-Summary length: ${length}
-Paper text:
-${text}`;
+  const prompt = buildSummaryPrompt(text, length);
 
   const apiResponse = await fetch(llmConfig.apiUrl, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${llmConfig.apiKey}`,
       "Content-Type": "application/json",
+      ...(process.env.LLM_HTTP_REFERER ? { "HTTP-Referer": process.env.LLM_HTTP_REFERER } : {}),
+      ...(process.env.LLM_X_TITLE ? { "X-Title": process.env.LLM_X_TITLE } : {}),
     },
     body: JSON.stringify({
       model: llmConfig.model,

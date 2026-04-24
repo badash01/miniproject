@@ -49,11 +49,16 @@ cp .env.example .env
 Add your API key:
 
 ```text
+LLM_PROVIDER=openai
 LLM_API_KEY=your_api_key_here
-LLM_PROVIDER=gemini
-LLM_MODEL=gemini-2.5-flash
+LLM_API_URL=https://openrouter.ai/api/v1/chat/completions
+LLM_MODEL=google/gemma-4-26b-a4b-it:free
+LLM_HTTP_REFERER=http://127.0.0.1:3001
+LLM_X_TITLE=Research Paper Summariser
 PORT=3001
 ```
+
+As of April 24, 2026, OpenRouter lists the free model ID as `google/gemma-4-26b-a4b-it:free`.
 
 Start the backend and web app:
 
@@ -66,6 +71,29 @@ Then visit:
 ```text
 http://127.0.0.1:3001
 ```
+
+## Free Deployment
+
+This project is prepared for free deployment on Render with the included [`render.yaml`](/Users/ashoksinghdhami/Documents/New%20project/render.yaml).
+
+Why Render:
+
+- Render currently offers free web services for hobby/testing use.
+- This app includes a Node backend, so it needs a host for both frontend files and the secret-backed API.
+- Render supports environment variables and a public URL on the free tier. See [Render free docs](https://render.com/docs/free) and [web services docs](https://render.com/docs/web-services).
+
+Steps:
+
+1. Push this project to GitHub.
+2. Sign in to Render.
+3. Create a new Blueprint or Web Service from the repo.
+4. Set `LLM_API_KEY` in Render as a secret environment variable.
+5. Deploy.
+
+Important:
+
+- Render requires the app to bind to `0.0.0.0`, which this project now supports.
+- The free tier has limitations and is best for demos, student projects, and testing.
 
 ## Chrome Extension
 
