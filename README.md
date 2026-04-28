@@ -58,6 +58,8 @@ LLM_X_TITLE=Research Paper Summariser
 PORT=3001
 ```
 
+If the provider says the API key was leaked, revoke that key in the provider dashboard, create a new one, replace only `LLM_API_KEY` in `.env`, and restart `npm start`. Do not reuse the reported key.
+
 As of April 24, 2026, OpenRouter lists the free model ID as `google/gemma-4-26b-a4b-it:free`.
 
 Start the backend and web app:

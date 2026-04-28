@@ -39,7 +39,7 @@ createServer(async (request, response) => {
       ok: true,
       provider: llmConfig.provider,
       model: llmConfig.model,
-      configured: Boolean(llmConfig.apiKey),
+      configured: hasUsableApiKey(),
     });
     return;
   }
@@ -56,9 +56,9 @@ createServer(async (request, response) => {
 
 async function handleSummarize(request, response) {
   try {
-    if (!llmConfig.apiKey) {
+    if (!hasUsableApiKey()) {
       sendJson(response, 500, {
-        message: "LLM_API_KEY is missing. Add it before using LLM summarisation.",
+        message: "LLM_API_KEY is missing or still a placeholder. Add a new API key and restart the server.",
       });
       return;
     }
@@ -75,7 +75,7 @@ async function handleSummarize(request, response) {
     const summary = await callLlm(paperText.slice(0, 60000), length);
     sendJson(response, 200, normaliseSummary(summary));
   } catch (error) {
-    sendJson(response, 500, { message: error.message || "Could not summarize paper." });
+    sendJson(response, 500, { message: describeLlmError(error) });
   }
 }
 
@@ -113,7 +113,7 @@ async function callOpenAiCompatible(text, length) {
   const payload = await apiResponse.json().catch(() => ({}));
 
   if (!apiResponse.ok) {
-    throw new Error(payload.error?.message || "LLM provider returned an error.");
+    throw new Error(providerErrorMessage(payload, "LLM provider returned an error."));
   }
 
   const content = payload.choices?.[0]?.message?.content;
@@ -151,7 +151,7 @@ async function callGemini(text, length) {
   const payload = await apiResponse.json().catch(() => ({}));
 
   if (!apiResponse.ok) {
-    throw new Error(payload.error?.message || "Gemini API returned an error.");
+    throw new Error(providerErrorMessage(payload, "Gemini API returned an error."));
   }
 
   const content = payload.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("");
@@ -241,6 +241,29 @@ function addCorsHeaders(response) {
 function sendJson(response, status, payload) {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(payload));
+}
+
+function providerErrorMessage(payload, fallback) {
+  return payload.error?.message || payload.error?.status || fallback;
+}
+
+function hasUsableApiKey() {
+  const key = llmConfig.apiKey?.trim() || "";
+  return Boolean(key && !/^your_|replace_with_/i.test(key) && key !== "secret_key");
+}
+
+function describeLlmError(error) {
+  const message = error.message || "Could not summarize paper.";
+
+  if (/reported as leaked|leaked.*api key|api key.*leaked/i.test(message)) {
+    return "The configured API key was reported as leaked. Revoke it, create a new key, update LLM_API_KEY in .env, and restart the server.";
+  }
+
+  if (/api key not valid|invalid api key|unauthorized|permission_denied/i.test(message)) {
+    return "The configured API key was rejected. Add a valid key to LLM_API_KEY in .env and restart the server.";
+  }
+
+  return message;
 }
 
 function arrayOr(value) {
