@@ -244,7 +244,7 @@ function sendJson(response, status, payload) {
 }
 
 function providerErrorMessage(payload, fallback) {
-  return payload.error?.message || payload.error?.status || fallback;
+  return payload.error?.metadata?.raw || payload.error?.message || payload.error?.status || fallback;
 }
 
 function hasUsableApiKey() {

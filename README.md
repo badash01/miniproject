@@ -52,7 +52,7 @@ Add your API key:
 LLM_PROVIDER=openai
 LLM_API_KEY=your_api_key_here
 LLM_API_URL=https://openrouter.ai/api/v1/chat/completions
-LLM_MODEL=google/gemma-4-26b-a4b-it:free
+LLM_MODEL=nvidia/nemotron-3-nano-30b-a3b:free
 LLM_HTTP_REFERER=http://127.0.0.1:3001
 LLM_X_TITLE=Research Paper Summariser
 PORT=3001
@@ -60,7 +60,7 @@ PORT=3001
 
 If the provider says the API key was leaked, revoke that key in the provider dashboard, create a new one, replace only `LLM_API_KEY` in `.env`, and restart `npm start`. Do not reuse the reported key.
 
-As of April 24, 2026, OpenRouter lists the free model ID as `google/gemma-4-26b-a4b-it:free`.
+Free OpenRouter models can be temporarily rate-limited by their upstream provider. If that happens, choose another `:free` chat model from OpenRouter and update `LLM_MODEL`.
 
 Start the backend and web app:
 
