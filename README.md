@@ -54,7 +54,7 @@ This is a single-workspace application, without tenant isolation. Local developm
 
 ## Deployment
 
-The included `render.yaml` uses a **free Docker web service** in Singapore with no persistent disk. LanceDB lives at `/var/data/rag` on the ephemeral filesystem. Uploaded documents and their indexes are lost when the service restarts, redeploys or spins down after inactivity. The app displays this limitation in its document library. The demo limits the workspace to 1,000 passages and uses small, single-threaded embedding batches for the free 512 MB instance.
+The included `render.yaml` uses a **free Docker web service** in Singapore with no persistent disk. LanceDB lives at `/var/data/rag` on the ephemeral filesystem. Uploaded documents and their indexes are lost when the service restarts, redeploys or spins down after inactivity. The demo limits the workspace to 1,000 passages and uses small, single-threaded embedding batches for the free 512 MB instance.
 
 The Docker image uses Node 24 on Debian, runs the tests during build, downloads and validates MiniLM before serving traffic, and runs as the unprivileged `node` user. The embedding model ships in the image and survives service restarts; uploaded documents do not. Only one application instance may access the local LanceDB directory.
 

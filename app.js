@@ -61,7 +61,6 @@ async function refresh() {
   $("#connection").textContent = health.configured
     ? "Connected · LLM ready"
     : "Connected · Evidence only";
-  $("#storageNotice").hidden = health.storage !== "ephemeral";
   $("#documents").innerHTML = documents.length
     ? documents
         .map(
