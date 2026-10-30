@@ -1,0 +1,12 @@
+.git
+.env
+.env.*
+node_modules
+data
+.cache
+outputs
+tmp
+test-results
+playwright-report
+.DS_Store
+*.zip

@@ -1,27 +1,36 @@
+# Persistent disks require a paid Render service. Review the plan before applying.
 services:
   - type: web
     name: research-paper-summariser
-    runtime: node
-    plan: free
+    runtime: docker
+    plan: standard
     repo: https://github.com/badash01/miniproject.git
-    buildCommand: npm install
-    startCommand: npm start
+    branch: codex/graph-rag-deploy
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /api/health
-    autoDeployTrigger: commit
+    autoDeployTrigger: checksPass
+    numInstances: 1
+    disk:
+      name: research-graph-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: HOST
         value: 0.0.0.0
       - key: PORT
         value: 10000
+      - key: RAG_DATA_DIR
+        value: /var/data/rag
+      - key: APP_AUTH_USER
+        value: admin
+      - key: APP_AUTH_PASSWORD
+        generateValue: true
       - key: LLM_PROVIDER
         value: openai
       - key: LLM_API_URL
         value: https://openrouter.ai/api/v1/chat/completions
       - key: LLM_MODEL
-        value: google/gemma-4-26b-a4b-it:free
-      - key: LLM_HTTP_REFERER
-        value: https://research-paper-summariser.onrender.com
-      - key: LLM_X_TITLE
-        value: Research Paper Summariser
-      - key: LLM_API_KEY
-        sync: false
+        value: openrouter/free

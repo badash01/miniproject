@@ -1,5 +1,23 @@
 const apiUrl = "http://127.0.0.1:3001/api/summarize";
 
+document.querySelector('#indexBtn').addEventListener('click', async (event) => {
+  const text = document.querySelector('#paperText').value.trim();
+  if (text.length < 60) { setStatus('Select or detect more document text first'); return; }
+  const button = event.currentTarget;
+  button.disabled = true;
+  setStatus('Indexing in RAG library');
+  try {
+    const response = await fetch('http://127.0.0.1:3001/api/documents', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: document.querySelector('#sourceTitle').textContent || 'Browser document', text }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.message || 'Indexing failed');
+    setStatus(payload.results[0].duplicate ? 'Document already in library' : 'Added to RAG library');
+  } catch (error) { setStatus(error.message); }
+  finally { button.disabled = false; }
+});
+
 const paperText = document.querySelector("#paperText");
 const detectBtn = document.querySelector("#detectBtn");
 const detectBadge = document.querySelector("#detectBadge");
