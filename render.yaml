@@ -1,9 +1,10 @@
-# Persistent disks require a paid Render service. Review the plan before applying.
+# Free demo: the document index is ephemeral and resets on restarts/redeploys.
 services:
   - type: web
-    name: research-paper-summariser
+    name: research-graph-rag
     runtime: docker
-    plan: standard
+    plan: free
+    region: singapore
     repo: https://github.com/badash01/miniproject.git
     branch: codex/graph-rag-deploy
     dockerfilePath: ./Dockerfile
@@ -11,10 +12,6 @@ services:
     healthCheckPath: /api/health
     autoDeployTrigger: checksPass
     numInstances: 1
-    disk:
-      name: research-graph-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
@@ -24,6 +21,16 @@ services:
         value: 10000
       - key: RAG_DATA_DIR
         value: /var/data/rag
+      - key: DEMO_MODE
+        value: "true"
+      - key: RAG_MAX_CHUNKS
+        value: "1000"
+      - key: EMBED_BATCH_SIZE
+        value: "4"
+      - key: EMBED_THREADS
+        value: "1"
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=256
       - key: APP_AUTH_USER
         value: admin
       - key: APP_AUTH_PASSWORD

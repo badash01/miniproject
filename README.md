@@ -1,6 +1,6 @@
 # Research Graph RAG
 
-Multi-document research workspace converted from the paper summariser. Upload several documents, retrieve related passages using vectors and a concept graph, and ask questions with document/page citations.
+Multi-document research workspace. Upload several documents, retrieve related passages using vectors and a concept graph, and ask questions with document/page citations.
 
 ## Run locally
 
@@ -40,35 +40,30 @@ The graph is a noun-phrase mention graph, not an LLM-extracted factual relations
 | `DELETE /api/documents/:id` | Remove a document and all its passages |
 | `GET /api/graph` | Graph visualization nodes/edges and full graph counts |
 | `POST /api/ask` | JSON `{ "question": "...", "documentIds": [], "mode": "hybrid" }`; empty IDs search all documents |
-| `POST /api/summarize` | Original summariser endpoint retained for the Chrome extension |
 
 Responses from `/api/ask` include `answer`, `sources`, and `generated`. Each source includes its document ID, filename, page, passage position, text, score and retrieval path.
-
-## Chrome extension
-
-Load `extension/` as an unpacked extension in Chrome, with the backend on port 3001. The existing summariser is retained. **Add to RAG Library** indexes the detected/selected text for use with other documents in the main app.
 
 ## Storage and limits
 
 Local data lives under `data/`; override it with `RAG_DATA_DIR`. Back up that directory to preserve the corpus. `.cache/` contains downloaded model files and can be recreated. Both are ignored by Git and blocked from static HTTP access. Only the explicit frontend asset allowlist is publicly served.
 
-Limits: 20 files per request, 20 MB per file, 50 MB per batch, 500 pages per PDF, 1.5 million extracted characters per document, and 10,000 passages per workspace. Duplicate content is detected by SHA-256. Index writes are serialized in one Node process. Failed files in a batch are reported individually; successful files remain indexed.
+Limits: 20 files per request, 20 MB per file, 50 MB per batch, 500 pages per PDF, 1.5 million extracted characters per document, and 10,000 passages per local workspace. The hosted free demo sets `RAG_MAX_CHUNKS=1000`, `EMBED_BATCH_SIZE=4` and `EMBED_THREADS=1` to fit its smaller instance. Duplicate content is detected by SHA-256. Index writes are serialized in one Node process. Failed files in a batch are reported individually; successful files remain indexed.
 
 This is a single-workspace application, without tenant isolation. Local development binds to loopback and can run without a password. Hosted production requires `APP_AUTH_PASSWORD` (at least 16 characters) and uses browser HTTP Basic authentication with `APP_AUTH_USER` (default `admin`). All pages, assets and document APIs require authentication; `/api/health` remains public for host probes. Use HTTPS in production. Everyone given the shared password can read and delete the same document library.
 
 ## Deployment
 
-The included `render.yaml` uses a Docker web service with a 1 GB persistent disk mounted at `/var/data`; LanceDB lives at `/var/data/rag`. It specifies Render's **paid Standard plan** for local inference and the document graph. Review current Render pricing before applying the Blueprint. Free ephemeral hosting will lose document indexes on restart or redeployment.
+The included `render.yaml` uses a **free Docker web service** in Singapore with no persistent disk. LanceDB lives at `/var/data/rag` on the ephemeral filesystem. Uploaded documents and their indexes are lost when the service restarts, redeploys or spins down after inactivity. The app displays this limitation in its document library. The demo limits the workspace to 1,000 passages and uses small, single-threaded embedding batches for the free 512 MB instance.
 
-The Docker image uses Node 24 on Debian, runs the tests during build, downloads and validates MiniLM before serving traffic, and runs as the unprivileged `node` user. Document storage is separate from the embedding model shipped in the image. Only one application instance may access the local LanceDB directory.
+The Docker image uses Node 24 on Debian, runs the tests during build, downloads and validates MiniLM before serving traffic, and runs as the unprivileged `node` user. The embedding model ships in the image and survives service restarts; uploaded documents do not. Only one application instance may access the local LanceDB directory.
 
 1. Push the reviewed source to the GitHub repository.
-2. Create or sync a Render Blueprint using this repository's `render.yaml`, reviewing the paid plan and persistent disk before provisioning.
+2. Create or sync a Render Blueprint using this repository's `render.yaml`, or create a free Docker service from the `codex/graph-rag-deploy` branch with the same environment settings. No paid disk or service is required for this demo.
 3. Render generates `APP_AUTH_PASSWORD` as a secret. Read it from the service's Environment settings and log in with username `admin` over the service's HTTPS URL.
-4. Optionally add `LLM_API_KEY` as a Render secret for generated answers. Without it, indexing and evidence retrieval still work. Never commit secrets.
+4. For generated answers, create your own API key at https://openrouter.ai/settings/keys and add it as the `LLM_API_KEY` Render secret. The configured `openrouter/free` router uses free models only, subject to provider quotas and availability. Without a key, indexing and evidence retrieval still work. Never commit secrets or use keys from public repositories.
 5. Wait for GitHub checks and the Render build to finish. Verify `/api/health`, password protection, document upload, citation retrieval and persistence after a restart.
 
-The CI workflow runs tests and a dependency audit on Linux/Node 24. Render auto-deploys only after checks pass. Docker can also run on a compatible host using a persistent volume at `/var/data` and an externally supplied `APP_AUTH_PASSWORD`. The Chrome extension defaults to the local backend; hosted cross-origin use would need its backend URL, host permissions and authentication configured separately.
+The CI workflow runs tests and a dependency audit on Linux/Node 24. Blueprint deployments use `checksPass`; direct service creation uses Render's supported auto-deploy settings. Docker can also run on a compatible host using a persistent volume at `/var/data` and an externally supplied `APP_AUTH_PASSWORD`. To retain hosted documents permanently, change to a paid service with a persistent disk, or move storage to an external persistent database.
 
 ## Verification
 

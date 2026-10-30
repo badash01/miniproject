@@ -11,9 +11,10 @@
   },
   "keywords": [
     "research-paper",
-    "summarizer",
-    "llm",
-    "chrome-extension"
+    "rag",
+    "vector-database",
+    "knowledge-graph",
+    "llm"
   ],
   "author": "",
   "license": "MIT",

@@ -18,11 +18,17 @@ const accessGuard = createAccessGuard({
   production: process.env.NODE_ENV === "production",
 });
 
+const openRouterKey = process.env.LLM_API_KEY?.startsWith("sk-or-");
 const llmConfig = {
   apiKey: process.env.LLM_API_KEY,
   apiUrl:
-    process.env.LLM_API_URL || "https://api.openai.com/v1/chat/completions",
-  model: process.env.LLM_MODEL || "gpt-4o-mini",
+    process.env.LLM_API_URL ||
+    (openRouterKey
+      ? "https://openrouter.ai/api/v1/chat/completions"
+      : "https://api.openai.com/v1/chat/completions"),
+  model:
+    process.env.LLM_MODEL ||
+    (openRouterKey ? "openrouter/free" : "gpt-4o-mini"),
   provider:
     process.env.LLM_PROVIDER ||
     (process.env.LLM_API_KEY?.startsWith("AIza") ? "gemini" : "openai"),
@@ -30,7 +36,11 @@ const llmConfig = {
 
 const store = await new RagStore(
   process.env.RAG_DATA_DIR || join(root, "data"),
-  localEmbedder(join(root, ".cache")),
+  localEmbedder(join(root, ".cache"), {
+    batchSize: Number(process.env.EMBED_BATCH_SIZE || 16),
+    threads: Number(process.env.EMBED_THREADS || 1),
+  }),
+  { maxChunks: Number(process.env.RAG_MAX_CHUNKS || 10000) },
 ).init();
 const handleRag = ragApi({
   store,
@@ -55,8 +65,7 @@ createServer(async (request, response) => {
     !origin ||
     origin === `http://${request.headers.host}` ||
     origin === `https://${request.headers.host}` ||
-    /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin) ||
-    /^chrome-extension:\/\/[a-p]{32}$/.test(origin);
+    /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
   if (!trustedOrigin) {
     sendJson(response, 403, { message: "Origin not allowed." });
     return;
@@ -81,16 +90,13 @@ createServer(async (request, response) => {
       chunks: store.rows.length,
       embeddingModel: "Xenova/all-MiniLM-L6-v2",
       vectorDatabase: "LanceDB",
+      storage: process.env.DEMO_MODE === "true" ? "ephemeral" : "local",
+      passageLimit: store.maxChunks,
     });
     return;
   }
 
   if (await handleRag(request, response)) return;
-
-  if (request.url === "/api/summarize" && request.method === "POST") {
-    await handleSummarize(request, response);
-    return;
-  }
 
   await serveStatic(request, response);
 }).listen(port, host, () => {
@@ -145,161 +151,6 @@ async function generateAnswer(question, sources) {
   if (!answer?.trim())
     throw new Error("The model returned an empty answer. Try again.");
   return answer;
-}
-
-async function handleSummarize(request, response) {
-  try {
-    if (!hasUsableApiKey()) {
-      sendJson(response, 500, {
-        message:
-          "LLM_API_KEY is missing or still a placeholder. Add a new API key and restart the server.",
-      });
-      return;
-    }
-
-    const body = await readBody(request);
-    const { text, length = "medium" } = JSON.parse(body || "{}");
-    const paperText = String(text || "").trim();
-
-    if (paperText.length < 180) {
-      sendJson(response, 400, {
-        message: "Please provide more research paper text.",
-      });
-      return;
-    }
-
-    const summary = await callLlm(paperText.slice(0, 60000), length);
-    sendJson(response, 200, normaliseSummary(summary));
-  } catch (error) {
-    sendJson(response, 500, { message: describeLlmError(error) });
-  }
-}
-
-async function callLlm(text, length) {
-  if (llmConfig.provider === "gemini") return callGemini(text, length);
-  return callOpenAiCompatible(text, length);
-}
-
-async function callOpenAiCompatible(text, length) {
-  const prompt = buildSummaryPrompt(text, length);
-
-  const apiResponse = await fetch(llmConfig.apiUrl, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${llmConfig.apiKey}`,
-      "Content-Type": "application/json",
-      ...(process.env.LLM_HTTP_REFERER
-        ? { "HTTP-Referer": process.env.LLM_HTTP_REFERER }
-        : {}),
-      ...(process.env.LLM_X_TITLE
-        ? { "X-Title": process.env.LLM_X_TITLE }
-        : {}),
-    },
-    body: JSON.stringify({
-      model: llmConfig.model,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are an expert research assistant. Extract the problem, method, contribution, results, limitations, and viva-ready notes. Be accurate and do not invent metrics.",
-        },
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.2,
-      response_format: { type: "json_object" },
-    }),
-  });
-
-  const payload = await apiResponse.json().catch(() => ({}));
-
-  if (!apiResponse.ok) {
-    throw new Error(
-      providerErrorMessage(payload, "LLM provider returned an error."),
-    );
-  }
-
-  const content = payload.choices?.[0]?.message?.content;
-  if (!content)
-    throw new Error("LLM response did not include summary content.");
-
-  return JSON.parse(content);
-}
-
-async function callGemini(text, length) {
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${llmConfig.model}:generateContent`;
-  const prompt = buildSummaryPrompt(text, length);
-
-  const apiResponse = await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": llmConfig.apiKey,
-    },
-    body: JSON.stringify({
-      systemInstruction: {
-        parts: [
-          {
-            text: "You are an expert research assistant. Extract the problem, method, contribution, results, limitations, and viva-ready notes. Be accurate and do not invent metrics.",
-          },
-        ],
-      },
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.2,
-        responseMimeType: "application/json",
-      },
-    }),
-  });
-
-  const payload = await apiResponse.json().catch(() => ({}));
-
-  if (!apiResponse.ok) {
-    throw new Error(
-      providerErrorMessage(payload, "Gemini API returned an error."),
-    );
-  }
-
-  const content = payload.candidates?.[0]?.content?.parts
-    ?.map((part) => part.text || "")
-    .join("");
-  if (!content)
-    throw new Error("Gemini response did not include summary content.");
-
-  return JSON.parse(content);
-}
-
-function buildSummaryPrompt(text, length) {
-  return `Summarise this research paper for a student project.
-
-Return only valid JSON with this exact shape:
-{
-  "title": "string",
-  "keywords": ["string"],
-  "abstract": "string",
-  "contributions": ["string"],
-  "methodology": "string",
-  "findings": "string",
-  "notes": ["string"]
-}
-
-Summary length: ${length}
-Paper text:
-${text}`;
-}
-
-function normaliseSummary(summary) {
-  return {
-    title: stringOr(summary.title, "Research Paper Summary"),
-    keywords: arrayOr(summary.keywords).slice(0, 10),
-    abstract: stringOr(summary.abstract, "No abstract summary returned."),
-    contributions: arrayOr(summary.contributions).slice(0, 8),
-    methodology: stringOr(
-      summary.methodology,
-      "No methodology summary returned.",
-    ),
-    findings: stringOr(summary.findings, "No findings summary returned."),
-    notes: arrayOr(summary.notes).slice(0, 8),
-  };
 }
 
 async function serveStatic(request, response) {
@@ -391,7 +242,7 @@ function hasUsableApiKey() {
 }
 
 function describeLlmError(error) {
-  const message = error.message || "Could not summarize paper.";
+  const message = error.message || "Could not answer the question.";
 
   if (/reported as leaked|leaked.*api key|api key.*leaked/i.test(message)) {
     return "The configured API key was reported as leaked. Revoke it, create a new key, update LLM_API_KEY in .env, and restart the server.";
@@ -406,14 +257,6 @@ function describeLlmError(error) {
   }
 
   return message;
-}
-
-function arrayOr(value) {
-  return Array.isArray(value) ? value.map((item) => String(item)) : [];
-}
-
-function stringOr(value, fallback) {
-  return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
 async function loadEnv() {
@@ -435,6 +278,6 @@ async function loadEnv() {
       if (key && process.env[key] === undefined) process.env[key] = value;
     });
   } catch {
-    // The project can still run without .env; /api/summarize will explain missing keys.
+    // Indexing and evidence retrieval can run without provider configuration.
   }
 }

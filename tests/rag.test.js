@@ -14,6 +14,37 @@ const embed = async (texts) =>
         ? [0, 1, 0]
         : [0, 0, 1],
   );
+
+test("configured passage limit rejects new documents without partial writes", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "rag-limit-"));
+  try {
+    const store = await new RagStore(directory, embed, { maxChunks: 1 }).init();
+    await store.add({
+      name: "First",
+      pages: [
+        "Solar energy powers irrigation systems on farms and supports renewable energy generation.",
+      ],
+    });
+    await assert.rejects(
+      () =>
+        store.add({
+          name: "Second",
+          pages: [
+            "Wind energy powers irrigation pumps and supports sustainable agriculture on rural farms.",
+          ],
+        }),
+      /Workspace limit is 1 passages/,
+    );
+    assert.equal(store.documents().length, 1);
+    const reopened = await new RagStore(directory, embed, {
+      maxChunks: 1,
+    }).init();
+    assert.equal(reopened.documents().length, 1);
+    assert.equal(reopened.documents()[0].name, "First");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 test("chunking preserves page provenance, overlap and final short pages", () => {
   const words = Array.from({ length: 300 }, (_, i) => `word${i}`).join(" ");
   const chunks = chunkPages([words, "Final page."]);
