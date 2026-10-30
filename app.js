@@ -224,9 +224,14 @@ $("#askForm").onsubmit = async (event) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question, mode, documentIds: [...selected] }),
     });
-    article.querySelector(".answer-label span").textContent = payload.generated
-      ? "Answer with sources"
-      : "Retrieved evidence";
+    article.querySelector(".answer-label span").textContent =
+      payload.answerType === "document_count"
+        ? "Verified document count"
+        : payload.answerType === "insufficient_evidence"
+          ? "Insufficient evidence"
+          : payload.generated
+            ? "Answer with sources"
+            : "Retrieved evidence";
     const answer = escape(payload.answer).replace(
       /\[(\d+)\]/g,
       (match, number) =>
@@ -235,7 +240,7 @@ $("#askForm").onsubmit = async (event) => {
           : match,
     );
     article.querySelector(".answer-body").innerHTML =
-      `${payload.notice ? `<p class="notice">${escape(payload.notice)}</p>` : ""}<div class="answer-text">${answer}</div><details class="sources"><summary>${payload.sources.length} source passages</summary>${payload.sources.map((s) => `<div class="source" id="source-${id}-${s.citation}"><strong>[${s.citation}] ${escape(s.name)}</strong><small>Page ${s.page} · Passage ${s.position + 1} · ${escape(s.via)} · Score ${s.score}</small><p>${escape(s.text)}</p></div>`).join("")}</details>`;
+      `${payload.notice ? `<p class="notice">${escape(payload.notice)}</p>` : ""}<div class="answer-text">${answer}</div><details class="sources"><summary>${payload.sources.length} source passages</summary>${payload.sources.map((s) => `<div class="source" id="source-${id}-${s.citation}"><strong>[${s.citation}] ${escape(s.name)}</strong><small>Page ${s.page} · Passage ${s.position + 1} · ${escape(s.via)}${s.score == null ? "" : ` · Score ${s.score}`}</small><p>${escape(s.text)}</p></div>`).join("")}</details>`;
     $("#question").value = "";
     status("#answerStatus", "");
   } catch (error) {

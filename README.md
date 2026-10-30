@@ -26,7 +26,8 @@ Never put real keys in example files or commit `.env`. The old repository contai
 4. LanceDB stores vectors, passage text, document metadata, page numbers and concept labels in `data/vectors/`. Search uses cosine distance. Small corpora use exact nearest-neighbor search; this app does not claim an ANN index.
 5. Compromise extracts noun phrases. Graphology builds document → passage → concept links. Identical normalized phrases connect passages across documents. The graph is reconstructed from persisted LanceDB rows after restart.
 6. Vector mode retrieves nearest passages. Vector + Graph additionally traverses shared concepts from the top four vector matches, then reranks candidates with a lightweight graph boost. Document filters apply to both paths.
-7. The selected evidence is passed to the configured LLM. Its answer must reference valid numbered sources; missing/out-of-range citations trigger an explicit evidence-only fallback. Citation-number validation cannot verify the factual correctness of every claim.
+7. Questions mentioning an uploaded filename (with or without its extension) are scoped to that document within the selected library. Summaries and question-count requests use ordered document coverage rather than nearest-neighbor samples, capped at 40 passages and 40,000 characters. Larger documents are explicitly marked as partial coverage. Exact question totals are calculated from distinct, contiguous Q1/Question 1-style labels only when coverage is complete; missing or ambiguous labels cause an explicit refusal rather than a guessed total.
+8. The selected evidence is passed to the configured LLM. Its answer must reference valid numbered sources; missing/out-of-range citations trigger an explicit evidence-only fallback. Provider responses cut short by the output limit are rejected rather than displayed as complete. Citation-number validation cannot verify the factual correctness of every claim.
 
 The graph is a noun-phrase mention graph, not an LLM-extracted factual relationship graph or a Neo4j service. The UI aggregates passage edges to document/concept edges and shows at most 65 concepts. Full graph connections remain available to retrieval. Graph phrase matching is exact after normalization, so aliases and synonyms may not connect. Questions are independent; earlier chat turns are not sent as conversational memory.
 
@@ -41,7 +42,7 @@ The graph is a noun-phrase mention graph, not an LLM-extracted factual relations
 | `GET /api/graph` | Graph visualization nodes/edges and full graph counts |
 | `POST /api/ask` | JSON `{ "question": "...", "documentIds": [], "mode": "hybrid" }`; empty IDs search all documents |
 
-Responses from `/api/ask` include `answer`, `sources`, and `generated`. Each source includes its document ID, filename, page, passage position, text, score and retrieval path.
+Responses from `/api/ask` include `answer`, `sources`, `generated`, and `retrieval` (intent, document scope, and passage coverage). Verified counts also include `answerType: "document_count"`; unsupported totals use `"insufficient_evidence"`. Each source includes its document ID, filename, page, passage position, text, score (null for ordered coverage) and retrieval path.
 
 ## Storage and limits
 

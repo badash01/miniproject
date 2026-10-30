@@ -13,10 +13,14 @@ test("HTTP multi-file ingestion, evidence citations, selection and deletion", as
     texts.map(() => [1, 0, 0]),
   ).init();
   let configured = false;
+  let generationCalls = 0;
   const handle = ragApi({
     store,
     configured: () => configured,
-    generate: async () => "Solar energy powers the irrigation pumps. [1]",
+    generate: async () => {
+      generationCalls++;
+      return "Solar energy powers the irrigation pumps. [1]";
+    },
     json: (res, code, data) => {
       res.writeHead(code, { "Content-Type": "application/json" });
       res.end(JSON.stringify(data));
@@ -81,6 +85,33 @@ test("HTTP multi-file ingestion, evidence citations, selection and deletion", as
     assert.equal(scoped.sources.length, 1);
     configured = true;
     assert.equal((await ask([])).generated, true);
+    const assignment = await store.add({
+      name: "assignmentcg.pdf",
+      pages: [
+        Array.from(
+          { length: 10 },
+          (_, i) =>
+            `Q${i + 1}. Explain the assignment topic ${i + 1}. ${"Supporting details. ".repeat(40)}`,
+        ).join(" "),
+      ],
+    });
+    const callsBeforeCount = generationCalls;
+    const count = await (
+      await fetch(`${base}/api/ask`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: "how may questions in assignmentcg",
+          mode: "hybrid",
+        }),
+      })
+    ).json();
+    assert.equal(count.answerType, "document_count");
+    assert.match(count.answer, /10 distinct numbered questions/);
+    assert.ok(count.sources.every((s) => s.documentId === assignment.id));
+    assert.equal(count.retrieval.coverage.complete, true);
+    assert.equal(generationCalls, callsBeforeCount);
+    await store.remove(assignment.id);
     const deleted = await fetch(
       `${base}/api/documents/${library.documents[0].id}`,
       { method: "DELETE" },

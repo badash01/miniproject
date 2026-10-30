@@ -15,6 +15,69 @@ const embed = async (texts) =>
         : [0, 0, 1],
   );
 
+test("named assignments receive full ordered coverage without unrelated documents", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "rag-coverage-"));
+  try {
+    const store = await new RagStore(directory, embed).init();
+    const assignment = await store.add({
+      name: "assignmentcg.pdf",
+      pages: [
+        Array.from(
+          { length: 10 },
+          (_, i) =>
+            `Q${i + 1}. Explain topic ${i + 1} and provide examples. ${"Supporting assignment details. ".repeat(20)}`,
+        ).join(" "),
+      ],
+    });
+    const module = await store.add({
+      name: "Module1PDF.pdf",
+      pages: [
+        "Q99. Unrelated module material about renewable energy and historical archives.",
+      ],
+    });
+    const context = await store.retrieveContext(
+      "how may questions in assignmentcg",
+    );
+    assert.equal(context.intent, "question_count");
+    assert.equal(context.coverage.complete, true);
+    assert.ok(context.sources.length > 1);
+    assert.ok(context.sources.every((s) => s.documentId === assignment.id));
+    assert.ok(context.sources.some((s) => s.text.includes("Q10.")));
+    assert.deepEqual(
+      context.sources.map((s) => s.position),
+      context.sources.map((s) => s.position).toSorted((a, b) => a - b),
+    );
+    const summary = await store.retrieveContext("summary of assignmentcg.pdf");
+    assert.equal(summary.coverage.complete, true);
+    assert.equal(summary.sources.length, context.sources.length);
+    await assert.rejects(
+      () =>
+        store.retrieveContext("summary of assignmentcg", {
+          documentIds: [module.id],
+        }),
+      /named document is not selected/,
+    );
+
+    await store.add({
+      name: "large-assignment.txt",
+      pages: Array.from(
+        { length: 45 },
+        (_, i) =>
+          `Q${i + 1}. This distinct page contains enough supporting details about topic ${i + 1} for extraction.`,
+      ),
+    });
+    const large = await store.retrieveContext(
+      "how many questions in large-assignment",
+    );
+    assert.equal(large.coverage.complete, false);
+    assert.equal(large.coverage.total, 45);
+    assert.ok(large.sources.length <= 40);
+    assert.ok(large.sources.some((s) => s.text.includes("Q45.")));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("configured passage limit rejects new documents without partial writes", async () => {
   const directory = await mkdtemp(join(tmpdir(), "rag-limit-"));
   try {
@@ -97,7 +160,7 @@ test("multi-document vector persistence, scope, deduplication and graph cleanup"
     assert.ok(scoped.every((s) => s.documentId === b.id));
     assert.ok(store.graphView().edges.some((e) => e.source === a.id));
     assert.ok(store.graphView().nodes.some((n) => n.type === "concept"));
-    const graphMatches = await store.retrieve("orchard", { mode: "hybrid" });
+    const graphMatches = await store.retrieve("orchards", { mode: "hybrid" });
     assert.ok(graphMatches.some((m) => m.documentId === b.id));
     assert.ok(
       graphMatches.find((m) => m.documentId === b.id).via.startsWith("graph:"),
